@@ -1209,6 +1209,16 @@
             zone.appendChild(card);
         }
 
+        // מסיר מילות אישור מתחילת ההסבר ("נכון!", "מדויק!" וכו'),
+        // כדי שאותו הסבר יתאים גם להצלחה וגם לטעות בלי לסתור.
+        function explanationOnly(text) {
+            if (!text) return '';
+            return text.replace(
+                /^(נכון מאוד|נכון|מדויק|מצוין|כל הכבוד|בדיוק)[!.,\s]*/,
+                ''
+            ).trim();
+        }
+
         function checkAnswer(stageNum, sIdx, oIdx, btnEl) {
             const item = stageData[stageNum][sIdx];
             const feedbackBox = document.getElementById(`feedback-${stageNum}-${sIdx}`);
@@ -1219,10 +1229,11 @@
             buttons.forEach(btn => btn.disabled = true);
 
             const isCorrect = (oIdx === item.correct);
+            const explanation = explanationOnly(item.feedback);
             if (isCorrect) {
                 btnEl.classList.add('correct');
                 feedbackBox.className = 'feedback-box correct';
-                feedbackBox.textContent = '✓  ' + item.feedback;
+                feedbackBox.textContent = '✓  נכון! ' + explanation;
                 scoreCorrect++;
                 updateScoreDisplay('correct');
             } else {
@@ -1231,7 +1242,7 @@
                 btnEl.classList.add('incorrect');
                 feedbackBox.className = 'feedback-box incorrect';
                 feedbackBox.textContent =
-                    `✗  לא מדויק. האפשרות הנכונה היא: ${item.options[item.correct]}.\n\n${item.feedback}`;
+                    `✗  לא מדויק. האפשרות הנכונה היא: ${item.options[item.correct]}.\n\n${explanation}`;
                 scoreWrong++;
                 updateScoreDisplay('wrong');
             }
