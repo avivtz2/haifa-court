@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>המתמחים של חיפה - לומדת מערכת המשפט</title>
     
-    <!-- Firebase SDK (v8 compat for simpler standalone HTML integration) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
@@ -108,7 +107,6 @@
 
     <div class="main-container">
 
-        <!-- WELCOME SCREEN -->
         <div id="welcome-screen" class="card">
             <h2>ברוכים הבאים להיכל</h2>
             <div class="explanation-box">
@@ -120,10 +118,8 @@
             <button class="btn" onclick="startApp()">הנפק תג והיכנס ללומדה</button>
         </div>
 
-        <!-- STAGE 1: INTRO -->
         <div id="stage1-intro" class="card hidden">
             <h2>תחנה 1: חדר המיון המשפטי</h2>
-            <!-- החלף את הקישור כאן לתמונה מויקישיתוף -->
             <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/Haifa_Courts_1.jpg/800px-Haifa_Courts_1.jpg" alt="היכל המשפט מבפנים" class="visual-banner">
             
             <div class="explanation-box">
@@ -142,7 +138,6 @@
             <div class="action-area"><button class="btn hidden" id="stage1-next-btn" onclick="nextScenario(1)">התיק הבא ⬅️</button></div>
         </div>
 
-        <!-- STAGE 2: INTRO -->
         <div id="stage2-intro" class="card hidden">
             <h2>תחנה 2: ניווט בהיררכיה</h2>
             <div class="explanation-box">
@@ -162,7 +157,6 @@
             <div class="action-area"><button class="btn hidden" id="stage2-next-btn" onclick="nextScenario(2)">התיק הבא ⬅️</button></div>
         </div>
 
-        <!-- STAGE 3: INTRO -->
         <div id="stage3-intro" class="card hidden">
             <h2>תחנה 3: איתור סעיף החוק המתאים</h2>
             <div class="explanation-box">
@@ -178,7 +172,6 @@
             <div class="action-area"><button class="btn hidden" id="stage3-next-btn" onclick="nextScenario(3)">למקרה הבא ⬅️</button></div>
         </div>
 
-        <!-- STAGE 4: FINAL (Q&A BOARD) -->
         <div id="stage4-final" class="card hidden">
             <h2>לוח השאלות לשופט/ת</h2>
             <div class="explanation-box">
@@ -269,28 +262,15 @@
         ];
 
         // --- FIREBASE SETUP ---
-        // TODO: החלף את האובייקט הזה באובייקט מהפרויקט שיצרת ב-Firebase!
-    // Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyA9SZmnIUtAcJq2IK2Ug7L-XKYJ_3-0_Bg",
-  authDomain: "haifa-court-sim.firebaseapp.com",
-  projectId: "haifa-court-sim",
-  storageBucket: "haifa-court-sim.firebasestorage.app",
-  messagingSenderId: "192566156523",
-  appId: "1:192566156523:web:a468af6b242d1985d072ae",
-  measurementId: "G-NYC41HXT8K"
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
+        const firebaseConfig = {
+            apiKey: "AIzaSyA9SZmnIUtAcJq2IK2Ug7L-XKYJ_3-0_Bg",
+            authDomain: "haifa-court-sim.firebaseapp.com",
+            projectId: "haifa-court-sim",
+            storageBucket: "haifa-court-sim.firebasestorage.app",
+            messagingSenderId: "192566156523",
+            appId: "1:192566156523:web:a468af6b242d1985d072ae",
+            measurementId: "G-NYC41HXT8K"
+        };
         
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
