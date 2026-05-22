@@ -3,7 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>המתמחים.ות של חיפה - לומדת מערכת המשפט</title>
+    <title>המתמחים של חיפה - לומדת מערכת המשפט</title>
+
+    <!--
+    ============================================================
+      כללי אבטחה ל-FIRESTORE — להעתיק לקונסולת Firebase
+      (Firestore Database → Rules)
+    ============================================================
+      ברירת המחדל של Firestore היא מסד פתוח לחלוטין. הכללים הבאים
+      מגבילים פעולות לאוסף court_questions בלבד, מגבילים אורך שדות,
+      וחוסמים מחיקה/עדכון מהלקוח. הדבק בקונסולה ולחץ Publish.
+
+      rules_version = '2';
+      service cloud.firestore {
+        match /databases/{database}/documents {
+          match /court_questions/{questionId} {
+            allow read: if true;
+            allow create: if request.resource.data.text is string
+                          && request.resource.data.text.size() > 0
+                          && request.resource.data.text.size() <= 500
+                          && request.resource.data.author is string
+                          && request.resource.data.author.size() <= 60;
+            allow update, delete: if false;
+          }
+          match /{document=**} { allow read, write: if false; }
+        }
+      }
+
+      הערה: כללים אלה חוסמים מחיקה גם למורה. מצב המורה בלומדה
+      מסתיר/מציג כפתורי מחיקה בלבד — אין זו אבטחה אמיתית, כי הקוד
+      גלוי במקור הדף. למחיקה אמיתית — מחק מקונסולת Firebase.
+    ============================================================
+      תמונות: כל מסך הסבר מציג תמונה של היכל המשפט בחיפה מתוך
+      ויקישיתוף (Wikimedia Commons, רישיון חופשי, צילומי PikiWiki).
+      אם קישור כלשהו לא נטען — מנגנון onerror מחליף אותו אוטומטית
+      ברקע CSS מעוצב, כך שהמראה נשמר גם ללא חיבור.
+    ============================================================
+    -->
 
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
@@ -91,6 +127,43 @@
         header p { font-size: 15px; opacity: 0.93; font-weight: 300; }
 
         /* ---------- PROGRESS ---------- */
+        /* ---------- SCOREBOARD ---------- */
+        .scoreboard {
+            position: fixed; top: 14px; left: 14px; z-index: 500;
+            display: flex; gap: 8px;
+            background: rgba(255,255,255,0.96);
+            padding: 7px 9px; border-radius: 12px;
+            box-shadow: 0 6px 20px -6px rgba(11,20,55,0.4);
+            border: 1px solid rgba(255,255,255,0.8);
+            backdrop-filter: blur(4px);
+            animation: cardIn 0.4s ease both;
+        }
+        .score-item {
+            display: flex; align-items: center; gap: 5px;
+            font-weight: 800; font-size: 15px;
+            padding: 3px 9px; border-radius: 8px;
+        }
+        .score-ic {
+            width: 19px; height: 19px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 12px; color: #fff;
+        }
+        .score-correct { background: var(--success-bg); color: #0c5e3e; }
+        .score-correct .score-ic { background: var(--success); }
+        .score-wrong { background: var(--error-bg); color: #9c2a25; }
+        .score-wrong .score-ic { background: var(--error); }
+        /* הבזק קצר בעת עדכון */
+        .score-item.bump { animation: scoreBump 0.45s ease; }
+        @keyframes scoreBump {
+            0% { transform: scale(1); }
+            40% { transform: scale(1.28); }
+            100% { transform: scale(1); }
+        }
+        @media (max-width: 560px) {
+            .scoreboard { top: 10px; left: 10px; padding: 5px 7px; gap: 6px; }
+            .score-item { font-size: 13px; padding: 2px 7px; }
+        }
+
         .progress-container { max-width: 820px; margin: 26px auto 6px; padding: 0 22px; }
         .progress-bar { display: flex; justify-content: space-between; position: relative; }
         .progress-track {
@@ -326,29 +399,33 @@
         .info-icon:hover, .info-icon.open {
             background: var(--blue-accent); color: #fff;
         }
+        /* החלונית במיקום fixed — כך היא לא נחתכת ע"י overflow של הכרטיס.
+           המיקום מחושב ב-JS ביחס לאייקון. */
         .info-pop {
-            position: absolute;
-            bottom: calc(100% + 10px);
-            left: 50%; transform: translateX(-50%);
-            width: 250px; max-width: 78vw;
+            position: fixed;
+            width: 260px; max-width: 80vw;
             background: var(--navy); color: #fff;
             font-size: 13px; font-weight: 500; font-style: normal;
             line-height: 1.55; text-align: right;
-            padding: 11px 13px; border-radius: 10px;
-            box-shadow: 0 10px 26px -8px rgba(11,20,55,0.6);
+            padding: 12px 14px; border-radius: 10px;
+            box-shadow: 0 12px 30px -8px rgba(11,20,55,0.65);
             opacity: 0; visibility: hidden;
             transition: opacity 0.18s, visibility 0.18s;
-            z-index: 20; pointer-events: none;
+            z-index: 9999; pointer-events: none;
         }
+        .info-pop.show { opacity: 1; visibility: visible; }
         .info-pop::after {
             content: ''; position: absolute;
-            top: 100%; left: 50%; transform: translateX(-50%);
+            left: var(--arrow-left, 50%); transform: translateX(-50%);
             border: 7px solid transparent;
-            border-top-color: var(--navy);
         }
-        .info-icon:hover .info-pop,
-        .info-icon.open .info-pop {
-            opacity: 1; visibility: visible;
+        /* חץ למטה (החלונית מעל האייקון) */
+        .info-pop.pop-above::after {
+            top: 100%; border-top-color: var(--navy);
+        }
+        /* חץ למעלה (החלונית מתחת לאייקון) */
+        .info-pop.pop-below::after {
+            bottom: 100%; border-bottom-color: var(--navy);
         }
 
         .feedback-box {
@@ -456,11 +533,21 @@
         <div class="header-bg court-pattern" id="header-bg"></div>
         <div class="header-inner">
             <span class="crest">⚖️</span>
-            <h1>המתמחים.ות של חיפה</h1>
+            <h1>המתמחים של חיפה</h1>
             <div class="header-rule"></div>
             <p>משימת הכנה אינטראקטיבית לקראת הסיור בהיכל המשפט</p>
         </div>
     </header>
+
+    <!-- חיווי הצלחות/כשלים — מוצמד לפינה השמאלית-עליונה -->
+    <div class="scoreboard hidden" id="scoreboard" title="מספר התשובות הנכונות והשגויות שלך">
+        <div class="score-item score-correct">
+            <span class="score-ic">✓</span><span id="score-correct-val">0</span>
+        </div>
+        <div class="score-item score-wrong">
+            <span class="score-ic">✗</span><span id="score-wrong-val">0</span>
+        </div>
+    </div>
 
     <div class="progress-container hidden" id="main-progress">
         <div class="progress-bar">
@@ -828,11 +915,15 @@
         let currentStage = 1;
         let currentScenarioIndex = 0;
         let isTeacherMode = false;
+        let scoreCorrect = 0;
+        let scoreWrong = 0;
 
         function saveProgress() {
             try {
                 localStorage.setItem(STORAGE_KEY, JSON.stringify({
-                    name: currentStudentName, stage: currentStage, scenario: currentScenarioIndex
+                    name: currentStudentName, stage: currentStage,
+                    scenario: currentScenarioIndex,
+                    correct: scoreCorrect, wrong: scoreWrong
                 }));
             } catch (e) {}
         }
@@ -844,16 +935,41 @@
             try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
         }
 
+        // עדכון חיווי ההצלחות/כשלים
+        function updateScoreDisplay(animate) {
+            const cEl = document.getElementById('score-correct-val');
+            const wEl = document.getElementById('score-wrong-val');
+            if (cEl) cEl.textContent = scoreCorrect;
+            if (wEl) wEl.textContent = scoreWrong;
+            if (animate) {
+                const item = (animate === 'correct')
+                    ? document.querySelector('.score-correct')
+                    : document.querySelector('.score-wrong');
+                if (item) {
+                    item.classList.remove('bump');
+                    void item.offsetWidth; // לאתחל את האנימציה
+                    item.classList.add('bump');
+                }
+            }
+            saveProgress();
+        }
+
+        function showScoreboard() {
+            const sb = document.getElementById('scoreboard');
+            if (sb) sb.classList.remove('hidden');
+        }
+
         window.addEventListener('DOMContentLoaded', () => {
             initHeroImages();
 
-            // סגירת חלוניות מידע פתוחות בלחיצה מחוץ לאייקון (נייד)
+            // סגירת חלונית מידע פתוחה בלחיצה מחוץ לאייקון (נייד)
             document.addEventListener('click', (ev) => {
                 if (!ev.target.closest('.info-icon')) {
-                    document.querySelectorAll('.info-icon.open')
-                        .forEach(el => el.classList.remove('open'));
+                    hideInfoPop();
                 }
             });
+            // סגירה גם בגלילה (החלונית ב-fixed ולא "נדבקת" לאייקון)
+            window.addEventListener('scroll', () => { hideInfoPop(); }, true);
 
             const saved = loadSavedProgress();
             if (saved && saved.name) {
@@ -893,20 +1009,27 @@
             if (nameInput.length < 2) { alert("אנא הכניסו שם תקין כדי להמשיך."); return; }
             applyName(nameInput);
             currentStage = 1; currentScenarioIndex = 0;
+            scoreCorrect = 0; scoreWrong = 0;
             saveProgress();
             document.getElementById('welcome-screen').classList.add('hidden');
             document.getElementById('main-progress').classList.remove('hidden');
             document.getElementById('stage1-intro').classList.remove('hidden');
             updateProgressBar();
+            updateScoreDisplay();
+            showScoreboard();
         }
 
         function resumeApp(saved) {
             applyName(saved.name);
             currentStage = saved.stage || 1;
             currentScenarioIndex = saved.scenario || 0;
+            scoreCorrect = saved.correct || 0;
+            scoreWrong = saved.wrong || 0;
             document.getElementById('welcome-screen').classList.add('hidden');
             document.getElementById('main-progress').classList.remove('hidden');
             updateProgressBar();
+            updateScoreDisplay();
+            showScoreboard();
             if (currentStage === 4) {
                 document.getElementById('stage4-final').classList.remove('hidden');
                 initFirebaseBoard();
@@ -938,6 +1061,65 @@
             loadScenario(stageNum, currentScenarioIndex);
         }
 
+        // ============================================================
+        //  חלונית מידע על החוקים (תחנה 3)
+        // ============================================================
+        // חלונית יחידה, נשמרת ב-body, ממוקמת ב-fixed ביחס לאייקון —
+        // כך היא לעולם לא נחתכת ע"י overflow של הכרטיס.
+        let infoPopEl = null;
+        let activeInfoIcon = null;
+
+        function ensureInfoPop() {
+            if (!infoPopEl) {
+                infoPopEl = document.createElement('div');
+                infoPopEl.className = 'info-pop';
+                document.body.appendChild(infoPopEl);
+            }
+            return infoPopEl;
+        }
+
+        function showInfoPop(iconEl) {
+            const pop = ensureInfoPop();
+            pop.textContent = iconEl._infoText || ''; // textContent — בטוח
+            activeInfoIcon = iconEl;
+            iconEl.classList.add('open');
+
+            // מודדים אחרי שהטקסט נכנס, כדי לקבל גובה אמיתי
+            pop.classList.add('show');
+            const iconRect = iconEl.getBoundingClientRect();
+            const popRect = pop.getBoundingClientRect();
+            const margin = 10;
+
+            // מיקום אופקי: ממורכז על האייקון, אך נשאר בתוך המסך
+            let left = iconRect.left + iconRect.width / 2 - popRect.width / 2;
+            left = Math.max(margin, Math.min(left, window.innerWidth - popRect.width - margin));
+
+            // מיקום אנכי: מעל האייקון אם יש מקום, אחרת מתחתיו
+            let top, arrowClass;
+            if (iconRect.top - popRect.height - margin > 0) {
+                top = iconRect.top - popRect.height - margin;
+                arrowClass = 'pop-above';
+            } else {
+                top = iconRect.bottom + margin;
+                arrowClass = 'pop-below';
+            }
+
+            // מיקום החץ — מצביע אל מרכז האייקון
+            const arrowLeft = iconRect.left + iconRect.width / 2 - left;
+            pop.style.setProperty('--arrow-left', arrowLeft + 'px');
+
+            pop.classList.remove('pop-above', 'pop-below');
+            pop.classList.add(arrowClass);
+            pop.style.left = left + 'px';
+            pop.style.top = top + 'px';
+        }
+
+        function hideInfoPop() {
+            if (infoPopEl) infoPopEl.classList.remove('show');
+            if (activeInfoIcon) activeInfoIcon.classList.remove('open');
+            activeInfoIcon = null;
+        }
+
         function loadScenario(stageNum, index) {
             const data = stageData[stageNum];
             const zone = document.getElementById(`stage${stageNum}-zone`);
@@ -945,6 +1127,7 @@
             const nextBtn = document.getElementById(`stage${stageNum}-next-btn`);
 
             nextBtn.classList.add('hidden');
+            hideInfoPop(); // סגירת חלונית מידע שאולי נשארה פתוחה
             const noun = (stageNum === 3) ? 'מקרה' : 'תיק';
             counter.textContent = `${noun} ${index + 1} מתוך ${data.length}`;
 
@@ -996,18 +1179,18 @@
                     info.textContent = 'i';
                     info.setAttribute('aria-label', 'מידע על החוק');
 
-                    const pop = document.createElement('span');
-                    pop.className = 'info-pop';
-                    pop.textContent = item.optionInfo[oIdx]; // textContent — בטוח
-                    info.appendChild(pop);
+                    // החלונית נשמרת כנתון על האייקון, ותיווצר ב-body
+                    // ברגע הצגתה — כך היא חופשייה מכל overflow של הכרטיס.
+                    info._infoText = item.optionInfo[oIdx];
 
-                    // בנייד: לחיצה פותחת/סוגרת את שורת המידע
+                    // דסקטופ: ריחוף
+                    info.addEventListener('mouseenter', function () { showInfoPop(info); });
+                    info.addEventListener('mouseleave', function () { hideInfoPop(); });
+                    // נייד: לחיצה פותחת/סוגרת
                     info.addEventListener('click', function (ev) {
                         ev.stopPropagation();
-                        const wasOpen = info.classList.contains('open');
-                        document.querySelectorAll('.info-icon.open')
-                            .forEach(el => el.classList.remove('open'));
-                        if (!wasOpen) info.classList.add('open');
+                        if (activeInfoIcon === info) { hideInfoPop(); }
+                        else { showInfoPop(info); }
                     });
 
                     row.appendChild(btn);
@@ -1040,12 +1223,17 @@
                 btnEl.classList.add('correct');
                 feedbackBox.className = 'feedback-box correct';
                 feedbackBox.textContent = '✓  ' + item.feedback;
+                scoreCorrect++;
+                updateScoreDisplay('correct');
             } else {
+                // מסמנים רק את התשובה שנבחרה. התשובה הנכונה מצוינת
+                // בטקסט המשוב, כדי שהתלמיד עדיין ילמד אותה.
                 btnEl.classList.add('incorrect');
-                buttons[item.correct].classList.add('correct');
                 feedbackBox.className = 'feedback-box incorrect';
                 feedbackBox.textContent =
                     `✗  לא מדויק. האפשרות הנכונה היא: ${item.options[item.correct]}.\n\n${item.feedback}`;
+                scoreWrong++;
+                updateScoreDisplay('wrong');
             }
 
             if (item.right) {
