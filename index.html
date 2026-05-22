@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>המתמחים של חיפה - לומדת מערכת המשפט</title>
+    
+    <!-- Firebase SDK (v8 compat for simpler standalone HTML integration) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;600;700&display=swap');
+
+        :root {
+            --primary-color: #1e3a8a;
+            --primary-light: #3b82f6;
+            --secondary-color: #0f172a;
+            --background-color: #f1f5f9;
+            --card-background: #ffffff;
+            --success-color: #10b981;
+            --error-color: #ef4444;
+            --text-main: #334155;
+            --text-muted: #64748b;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Assistant', sans-serif; }
+        body { background-color: var(--background-color); color: var(--text-main); line-height: 1.6; padding-bottom: 40px; }
+
+        header {
+            background: linear-gradient(135deg, var(--secondary-color) 0%, var(--primary-color) 100%);
+            color: white; padding: 25px 20px; text-align: center; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        header h1 { font-size: 24px; font-weight: 700; margin-bottom: 5px; }
+        header p { font-size: 14px; opacity: 0.9; }
+
+        .progress-container { max-width: 800px; margin: 20px auto; padding: 0 20px; }
+        .progress-bar { display: flex; justify-content: space-between; position: relative; margin-bottom: 20px; }
+        .progress-bar::before { content: ''; position: absolute; top: 50%; left: 0; right: 0; height: 4px; background-color: #cbd5e1; transform: translateY(-50%); z-index: 1; }
+        .progress-line-fill { position: absolute; top: 50%; right: 0; height: 4px; background-color: var(--primary-light); transform: translateY(-50%); z-index: 1; transition: width 0.4s ease; width: 0%; }
+        .step { width: 35px; height: 35px; border-radius: 50%; background-color: #cbd5e1; border: 3px solid #cbd5e1; display: flex; align-items: center; justify-content: center; color: var(--text-main); font-weight: 600; font-size: 14px; z-index: 2; transition: all 0.3s ease; }
+        .step.active { background-color: white; border-color: var(--primary-light); color: var(--primary-color); scale: 1.1; }
+        .step.completed { background-color: var(--success-color); border-color: var(--success-color); color: white; }
+
+        .main-container { max-width: 800px; margin: 0 auto; padding: 0 20px; }
+        .card { background-color: var(--card-background); border-radius: 12px; padding: 30px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05); margin-bottom: 25px; transition: all 0.3s ease; }
+        .hidden { display: none !important; }
+
+        h2 { color: var(--primary-color); font-size: 22px; margin-bottom: 15px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; }
+
+        .visual-banner { width: 100%; height: 200px; object-fit: cover; border-radius: 8px; margin-bottom: 15px; border: 1px solid #cbd5e1; }
+
+        .explanation-box { background-color: #f8fafc; border-right: 4px solid var(--primary-light); padding: 15px 20px; margin-bottom: 25px; border-radius: 4px 12px 12px 4px; }
+        .explanation-box p { margin-bottom: 10px; font-size: 16px; }
+
+        .input-group { margin-bottom: 20px; }
+        .name-input { width: 100%; padding: 12px; font-size: 18px; border: 2px solid #cbd5e1; border-radius: 8px; text-align: center; }
+        .name-input:focus { border-color: var(--primary-light); outline: none; }
+
+        .btn { display: inline-block; background-color: var(--primary-color); color: white; padding: 12px 24px; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; transition: background-color 0.2s; text-align: center; width: 100%; }
+        .btn:hover { background-color: var(--primary-light); }
+        .btn:disabled { background-color: #cbd5e1; cursor: not-allowed; }
+
+        .scenario-card { background: linear-gradient(to left, #ffffff, #f8fafc); border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+        .scenario-text { font-size: 18px; font-weight: 600; color: var(--secondary-color); margin-bottom: 15px; }
+
+        .option-btn { display: block; width: 100%; background-color: white; border: 2px solid #cbd5e1; padding: 12px 20px; margin-bottom: 10px; border-radius: 8px; text-align: right; font-size: 15px; cursor: pointer; transition: all 0.2s ease; line-height: 1.4; }
+        .option-btn:hover:not(:disabled) { border-color: var(--primary-light); background-color: #f0fdf4; }
+        .option-btn.correct { background-color: #d1fae5; border-color: var(--success-color); color: #065f46; font-weight: 600; }
+        .option-btn.incorrect { background-color: #fee2e2; border-color: var(--error-color); color: #991b1b; }
+
+        .feedback-box { margin-top: 15px; padding: 15px; border-radius: 8px; font-size: 15px; font-weight: 500; display: none; }
+        .feedback-box.correct { display: block; background-color: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+        .feedback-box.incorrect { display: block; background-color: #fff5f5; border: 1px solid #fed7d7; color: #991b1b; }
+
+        .action-area { margin-top: 20px; display: flex; justify-content: space-between; gap: 15px; }
+        
+        .qa-textarea { width: 100%; height: 100px; padding: 15px; border: 2px solid #cbd5e1; border-radius: 8px; font-size: 16px; resize: none; margin-bottom: 10px; }
+        .questions-board { background-color: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 8px; padding: 20px; min-height: 200px; display: grid; grid-template-columns: 1fr; gap: 15px; }
+        
+        .sticky-note { background-color: #fef08a; color: #854d0e; padding: 15px; border-radius: 4px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-right: 5px solid #eab308; position: relative; display: flex; flex-direction: column; justify-content: space-between;}
+        .note-content { font-weight: 600; margin-bottom: 10px; }
+        .note-author { font-size: 12px; color: #713f12; text-align: left; font-style: italic; border-top: 1px solid #fde047; padding-top: 5px; }
+        .delete-btn { position: absolute; top: 5px; left: 5px; background: #ef4444; color: white; border: none; border-radius: 4px; padding: 2px 8px; font-size: 12px; cursor: pointer; display: none; }
+        
+        .footer-tools { text-align: center; margin-top: 30px; font-size: 12px; color: #94a3b8; }
+        .teacher-lock { cursor: pointer; margin-right: 5px; opacity: 0.5; transition: opacity 0.2s; }
+        .teacher-lock:hover { opacity: 1; }
+        .teacher-active .delete-btn { display: block; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>המתמחים של חיפה</h1>
+        <p>משימת הכנה אינטראקטיבית לקראת הסיור בהיכל המשפט</p>
+    </header>
+
+    <div class="progress-container hidden" id="main-progress">
+        <div class="progress-bar">
+            <div class="progress-line-fill" id="progress-line"></div>
+            <div class="step active" id="step-1">1</div>
+            <div class="step" id="step-2">2</div>
+            <div class="step" id="step-3">3</div>
+            <div class="step" id="step-4">4</div>
+        </div>
+    </div>
+
+    <div class="main-container">
+
+        <!-- WELCOME SCREEN -->
+        <div id="welcome-screen" class="card">
+            <h2>ברוכים הבאים להיכל</h2>
+            <div class="explanation-box">
+                <p>כדי שנוכל להנפיק לכם תג מתמחה ולשמור את השאלות שלכם על הלוח השיתופי של הכיתה, אנא הזינו את שמכם המלא.</p>
+            </div>
+            <div class="input-group">
+                <input type="text" id="student-name" class="name-input" placeholder="שם פרטי ושם משפחה" required>
+            </div>
+            <button class="btn" onclick="startApp()">הנפק תג והיכנס ללומדה</button>
+        </div>
+
+        <!-- STAGE 1: INTRO -->
+        <div id="stage1-intro" class="card hidden">
+            <h2>תחנה 1: חדר המיון המשפטי</h2>
+            <!-- החלף את הקישור כאן לתמונה מויקישיתוף -->
+            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/Haifa_Courts_1.jpg/800px-Haifa_Courts_1.jpg" alt="היכל המשפט מבפנים" class="visual-banner">
+            
+            <div class="explanation-box">
+                <p><strong>שלום <span class="display-name"></span>!</strong></p>
+                <p>במערכת המשפט שלנו, אנחנו מטפלים בשלושה סוגים שונים לחלוטין של סכסוכים. מיין את התיקים שהגיעו הבוקר:</p>
+                <p>⚖️ <strong>משפט פלילי:</strong> המדינה תובעת אדם שעבר על החוק.</p>
+                <p>💼 <strong>משפט אזרחי:</strong> סכסוך בין אדם לאדם/תאגיד על רכוש או כסף.</p>
+                <p>🏛️ <strong>משפט מינהלי:</strong> האזרח תובע את רשויות השלטון על החלטה שלדעתו פוגעת בו.</p>
+            </div>
+            <button class="btn" onclick="startStage(1)">הבנתי, בואו נתחיל במיון</button>
+        </div>
+
+        <div id="stage1-game" class="card hidden">
+            <h2 id="stage1-counter">תיק 1 מתוך 6</h2>
+            <div id="stage1-zone"></div>
+            <div class="action-area"><button class="btn hidden" id="stage1-next-btn" onclick="nextScenario(1)">התיק הבא ⬅️</button></div>
+        </div>
+
+        <!-- STAGE 2: INTRO -->
+        <div id="stage2-intro" class="card hidden">
+            <h2>תחנה 2: ניווט בהיררכיה</h2>
+            <div class="explanation-box">
+                <p>היכל המשפט בחיפה פועל לפי <strong>סמכות עניינית</strong>. עליך לנווט את התיקים לאולם הנכון:</p>
+                <p>• <strong>תביעות קטנות:</strong> סכסוכים כספיים קטנים ללא עורכי דין.</p>
+                <p>• <strong>נוער:</strong> קטינים שעברו עבירות פליליות.</p>
+                <p>• <strong>עבודה:</strong> יחסי עובד ומעביד.</p>
+                <p>• <strong>שלום:</strong> עבירות קלות/בינוניות ותביעות אזרחיות עד 2.5 מיליון ש"ח.</p>
+                <p>• <strong>מחוזי:</strong> פשעים חמורים, תביעות ענק, וערעורים על השלום.</p>
+            </div>
+            <button class="btn" onclick="startStage(2)">אני מוכן לנווט</button>
+        </div>
+
+        <div id="stage2-game" class="card hidden">
+            <h2 id="stage2-counter">תיק 1 מתוך 5</h2>
+            <div id="stage2-zone"></div>
+            <div class="action-area"><button class="btn hidden" id="stage2-next-btn" onclick="nextScenario(2)">התיק הבא ⬅️</button></div>
+        </div>
+
+        <!-- STAGE 3: INTRO -->
+        <div id="stage3-intro" class="card hidden">
+            <h2>תחנה 3: איתור סעיף החוק המתאים</h2>
+            <div class="explanation-box">
+                <p>שופטים ועורכי דין לא עובדים לפי תחושות בטן. כל טענה בבית המשפט חייבת להישען על חוק ספציפי שנחקק בכנסת.</p>
+                <p>במשימה זו תוצג בפניך סיטואציה, ותצטרך לקבוע <strong>איזה חוק מתוך האפשרויות</strong> הוא החוק הרלוונטי ביותר שעליו תתבסס התביעה או כתב האישום. שים לב להבדלים בין חוקים פליליים, חוקי עבודה, וחוקים אזרחיים!</p>
+            </div>
+            <button class="btn" onclick="startStage(3)">למציאת החוק המתאים</button>
+        </div>
+
+        <div id="stage3-game" class="card hidden">
+            <h2 id="stage3-counter">מקרה 1 מתוך 4</h2>
+            <div id="stage3-zone"></div>
+            <div class="action-area"><button class="btn hidden" id="stage3-next-btn" onclick="nextScenario(3)">למקרה הבא ⬅️</button></div>
+        </div>
+
+        <!-- STAGE 4: FINAL (Q&A BOARD) -->
+        <div id="stage4-final" class="card hidden">
+            <h2>לוח השאלות לשופט/ת</h2>
+            <div class="explanation-box">
+                <p><strong>ברכות <span class="display-name"></span>! סיימת את ההתמחות!</strong></p>
+                <p>לקראת המפגש עם השופט/ת בסיור הפיזי, זה המקום להוסיף שאלה ללוח הכיתתי המשותף. כל הכיתה תראה את השאלות שיעלו כאן.</p>
+            </div>
+
+            <div class="input-group">
+                <textarea id="user-question" class="qa-textarea" placeholder="מה תרצה לשאול את השופט/ת?"></textarea>
+                <button class="btn" id="submit-q-btn" onclick="submitQuestion()">שלח ללוח הכיתתי</button>
+            </div>
+
+            <h3 style="margin-top: 20px; margin-bottom: 15px; color: var(--primary-color);">📌 שאלות הכיתה</h3>
+            <div class="questions-board" id="questions-board">
+                <div style="text-align: center; grid-column: 1/-1;">טוען שאלות מהענן...</div>
+            </div>
+        </div>
+
+        <div class="footer-tools">
+            <span class="teacher-lock" onclick="toggleTeacherMode()" title="כניסת מורה">🔒</span>
+            פותח במסגרת שיעורי אזרחות
+        </div>
+    </div>
+
+    <script>
+        // --- DATA STRUCTURES ---
+        let currentStudentName = "";
+        let isTeacherMode = false;
+
+        const stage1Data = [
+            { text: "אדם נתפס כשהוא פורץ לרכב בחניון מרכז חורב.", options: ["פלילי", "אזרחי", "מינהלי"], correct: 0, feedback: "נכון! המדינה תובעת את הפורץ כדי להעניש אותו (פלילי)." },
+            { text: "קבלן נתבע כי לא סיים שיפוץ דירה כפי שסוכם.", options: ["פלילי", "אזרחי", "מינהלי"], correct: 1, feedback: "מדויק! סכסוך חוזי בין שני גורמים פרטיים (אזרחי)." },
+            { text: "בעל עסק עותר נגד עיריית חיפה שסירבה לחדש רישיון עסק.", options: ["פלילי", "אזרחי", "מינהלי"], correct: 2, feedback: "כל הכבוד! עתירה נגד רשות שלטונית (מינהלי)." },
+            { text: "סכסוך שכנים על עץ שקרס והרס גדר משותפת.", options: ["פלילי", "אזרחי", "מינהלי"], correct: 1, feedback: "נכון מאוד! נזקי רכוש פרטי מטופלים במשפט האזרחי." },
+            { text: "הפגנה שבמהלכה מפגינים זרקו אבנים על שוטרים.", options: ["פלילי", "אזרחי", "מינהלי"], correct: 0, feedback: "נכון! תקיפת שוטרים היא עבירה פלילית." },
+            { text: "עמותה תובעת את משרד הפנים על החלטתו לגרש עובדת זרה.", options: ["פלילי", "אזרחי", "מינהלי"], correct: 2, feedback: "נכון! תביעה נגד משרד ממשלתי על החלטה לא תקינה (מינהלי)." }
+        ];
+
+        const stage2Data = [
+            { text: "בן 16 נתפס משחית תחנת כרמלית.", options: ["תביעות קטנות", "נוער", "עבודה", "שלום", "מחוזי"], correct: 1, feedback: "נכון! קטינים נשפטים בבית משפט לנוער." },
+            { text: "מלצר פוטר ולא קיבל תשלום על ימי התלמדות.", options: ["תביעות קטנות", "נוער", "עבודה", "שלום", "מחוזי"], correct: 2, feedback: "מדויק! יחסי עובד-מעביד נידונים בבית הדין לעבודה." },
+            { text: "רכשתם אוזניות ב-800 שקלים, הגיעו שבורות והחנות מתעלמת.", options: ["תביעות קטנות", "נוער", "עבודה", "שלום", "מחוזי"], correct: 0, feedback: "כל הכבוד! סכסוך צרכני בסכום קטן ללא עורכי דין." },
+            { text: "תביעת ענק של 12 מיליון שקלים נגד מפעל מזהם.", options: ["תביעות קטנות", "נוער", "עבודה", "שלום", "מחוזי"], correct: 4, feedback: "נכון! תביעה אזרחית מעל 2.5 מיליון עוברת למחוזי." },
+            { text: "כתב אישום על גניבה מחנות בשווי 5,000 שקלים.", options: ["תביעות קטנות", "נוער", "עבודה", "שלום", "מחוזי"], correct: 3, feedback: "נכון מאוד! עבירות פליליות קלות/בינוניות נידונות בשלום." }
+        ];
+
+        const stage3Data = [
+            {
+                text: "מועדון לילה בעיר התחתית סירב להכניס קבוצת צעירים בטענה ש'הם נראים ממוצא מסוים שלא מתאים למועדון'.",
+                options: [
+                    "חוק העונשין, תשל\"ז-1977 (עבירת תקיפה)",
+                    "חוק איסור הפליה במוצרים, בשירותים ובכניסה למקומות בידור ולמקומות ציבוריים, תשס\"א-2000",
+                    "חוק החוזים (חלק כללי), תשל\"ג-1973"
+                ],
+                correct: 1,
+                feedback: "בדיוק! חוק איסור הפליה נועד בדיוק למקרים אלו, בהם עסק פרטי המספק שירות לציבור מפלה לקוחות על בסיס גזע, דת או מוצא. (הזכות לשוויון)."
+            },
+            {
+                text: "עובדת הייטק פוטרה מעבודתה יום לאחר שהודיעה למנהל שלה שהיא נמצאת בחודש השלישי להריונה.",
+                options: [
+                    "חוק עבודת נשים, תשי\"ד-1954",
+                    "חוק יסוד: כבוד האדם וחירותו",
+                    "פקודת הנזיקין [נוסח חדש] (רשלנות)"
+                ],
+                correct: 0,
+                feedback: "נכון מאוד! חוק עבודת נשים אוסר במפורש על פיטורי עובדת בהריון ללא קבלת היתר מיוחד ממשרד העבודה. זהו חוק ספציפי מתחום דיני העבודה שגובר על חוקים כלליים."
+            },
+            {
+                text: "תושב חיפה פרסם פוסט בפייסבוק שבו הוא טוען שבעל פיצרייה מקומית משתמש בחומרים מקולקלים, אף על פי שידע שזה שקר, רק כדי לפגוע בו.",
+                options: [
+                    "חוק הגנת הפרטיות, תשמ\"א-1981",
+                    "חוק הגנת הצרכן, תשמ\"א-1981",
+                    "חוק איסור לשון הרע, תשכ\"ה-1965"
+                ],
+                correct: 2,
+                feedback: "מצוין! פרסום דברי שקר שנועדו לפגוע בעסקו או בשמו הטוב של אדם נכנסים תחת 'לשון הרע'. בעל הפיצרייה יוכל לתבוע פיצויים על בסיס חוק זה."
+            },
+            {
+                text: "נער הגיע לפארק ואיים על נער אחר עם סכין שאם לא יביא לו את האופניים החשמליים שלו, הוא ידקור אותו.",
+                options: [
+                    "חוק העונשין, תשל\"ז-1977 (עבירת שוד ואיומים)",
+                    "חוק הנוער (שפיטה, ענישה ודרכי טיפול), תשל\"א-1971",
+                    "חוק השומרים, תשכ\"ז-1967"
+                ],
+                correct: 0,
+                feedback: "נכון! עצם נטילת הרכוש תוך שימוש באיום או אלימות זוהי עבירת 'שוד' המוגדרת בחוק העונשין. העובדה שהוא נער רק אומרת שההליך ייערך בבית משפט לנוער, אבל החוק שהופר הוא חוק העונשין הפלילי."
+            }
+        ];
+
+        // --- FIREBASE SETUP ---
+        // TODO: החלף את האובייקט הזה באובייקט מהפרויקט שיצרת ב-Firebase!
+        const firebaseConfig = {
+            apiKey: "AIzaSyYourApiKeyHere...",
+            authDomain: "your-project.firebaseapp.com",
+            projectId: "your-project-id",
+            storageBucket: "your-project.appspot.com",
+            messagingSenderId: "123456789",
+            appId: "1:123456789:web:abcdefg"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // --- STATE MANAGEMENT ---
+        let currentStage = 1;
+        let currentScenarioIndex = 0;
+
+        function startApp() {
+            const nameInput = document.getElementById('student-name').value.trim();
+            if (nameInput.length < 2) {
+                alert("אנא הכנס שם תקין כדי להמשיך.");
+                return;
+            }
+            currentStudentName = nameInput;
+            document.querySelectorAll('.display-name').forEach(el => el.innerText = currentStudentName);
+            
+            document.getElementById('welcome-screen').classList.add('hidden');
+            document.getElementById('main-progress').classList.remove('hidden');
+            document.getElementById('stage1-intro').classList.remove('hidden');
+        }
+
+        function updateProgressBar() {
+            const line = document.getElementById('progress-line');
+            const totalStages = 4;
+            line.style.width = (((currentStage - 1) / (totalStages - 1)) * 100) + '%';
+            for (let i = 1; i <= totalStages; i++) {
+                const stepEl = document.getElementById(`step-${i}`);
+                if (i < currentStage) { stepEl.className = 'step completed'; stepEl.innerHTML = '✓'; }
+                else if (i === currentStage) { stepEl.className = 'step active'; stepEl.innerHTML = i; }
+                else { stepEl.className = 'step'; stepEl.innerHTML = i; }
+            }
+        }
+
+        function startStage(stageNum) {
+            document.getElementById(`stage${stageNum}-intro`).classList.add('hidden');
+            document.getElementById(`stage${stageNum}-game`).classList.remove('hidden');
+            currentScenarioIndex = 0;
+            loadScenario(stageNum, currentScenarioIndex);
+        }
+
+        function loadScenario(stageNum, index) {
+            let data, zoneId, counterId, nextBtnId;
+            if (stageNum === 1) { data = stage1Data; zoneId = 'stage1-zone'; counterId = 'stage1-counter'; nextBtnId = 'stage1-next-btn'; }
+            if (stageNum === 2) { data = stage2Data; zoneId = 'stage2-zone'; counterId = 'stage2-counter'; nextBtnId = 'stage2-next-btn'; }
+            if (stageNum === 3) { data = stage3Data; zoneId = 'stage3-zone'; counterId = 'stage3-counter'; nextBtnId = 'stage3-next-btn'; }
+
+            document.getElementById(nextBtnId).classList.add('hidden');
+            document.getElementById(counterId).innerText = `תיק ${index + 1} מתוך ${data.length}`;
+            if (stageNum === 3) document.getElementById(counterId).innerText = `מקרה ${index + 1} מתוך ${data.length}`;
+
+            const item = data[index];
+            let html = `<div class="scenario-card"><div class="scenario-text">${item.text}</div><div>`;
+            item.options.forEach((opt, oIdx) => {
+                html += `<button class="option-btn" onclick="checkAnswer(${stageNum}, ${index}, ${oIdx}, this)">${opt}</button>`;
+            });
+            html += `</div><div class="feedback-box" id="feedback-${stageNum}-${index}"></div></div>`;
+            document.getElementById(zoneId).innerHTML = html;
+        }
+
+        function checkAnswer(stageNum, sIdx, oIdx, btnEl) {
+            let data = (stageNum === 1) ? stage1Data : (stageNum === 2) ? stage2Data : stage3Data;
+            const item = data[sIdx];
+            const feedbackBox = document.getElementById(`feedback-${stageNum}-${sIdx}`);
+            const buttons = btnEl.parentElement.querySelectorAll('.option-btn');
+            buttons.forEach(btn => btn.disabled = true);
+
+            if (oIdx === item.correct) {
+                btnEl.classList.add('correct');
+                feedbackBox.className = 'feedback-box correct';
+                feedbackBox.innerText = item.feedback;
+            } else {
+                btnEl.classList.add('incorrect');
+                buttons[item.correct].classList.add('correct');
+                feedbackBox.className = 'feedback-box incorrect';
+                feedbackBox.innerText = `לא מדויק. האפשרות הנכונה היא: ${item.options[item.correct]}. \n\n ${item.feedback}`;
+            }
+            document.getElementById(`stage${stageNum}-next-btn`).classList.remove('hidden');
+        }
+
+        function nextScenario(stageNum) {
+            let data = (stageNum === 1) ? stage1Data : (stageNum === 2) ? stage2Data : stage3Data;
+            currentScenarioIndex++;
+            if (currentScenarioIndex < data.length) {
+                loadScenario(stageNum, currentScenarioIndex);
+            } else {
+                document.getElementById(`stage${stageNum}-game`).classList.add('hidden');
+                currentStage++;
+                updateProgressBar();
+                if (currentStage === 4) {
+                    document.getElementById('stage4-final').classList.remove('hidden');
+                    initFirebaseBoard();
+                } else {
+                    document.getElementById(`stage${currentStage}-intro`).classList.remove('hidden');
+                }
+            }
+        }
+
+        // --- FIREBASE Q&A BOARD ---
+        function initFirebaseBoard() {
+            const board = document.getElementById('questions-board');
+            db.collection("court_questions").orderBy("timestamp", "desc").onSnapshot((querySnapshot) => {
+                board.innerHTML = '';
+                if(querySnapshot.empty) {
+                    board.innerHTML = '<div style="text-align: center; color: gray;">הלוח ריק. תהיו הראשונים לשאול!</div>';
+                    return;
+                }
+                querySnapshot.forEach((doc) => {
+                    const qData = doc.data();
+                    const note = document.createElement('div');
+                    note.className = 'sticky-note';
+                    note.innerHTML = `
+                        <button class="delete-btn" onclick="deleteQuestion('${doc.id}')">מחק</button>
+                        <div class="note-content">${qData.text}</div>
+                        <div class="note-author">מאת: ${qData.author}</div>
+                    `;
+                    board.appendChild(note);
+                });
+            }, (error) => {
+                console.error("Error getting questions: ", error);
+                board.innerHTML = '<div style="color: red; text-align:center;">שגיאה בחיבור לענן. ודא שהגדרות ה-Firebase מעודכנות.</div>';
+            });
+        }
+
+        function submitQuestion() {
+            const textarea = document.getElementById('user-question');
+            const btn = document.getElementById('submit-q-btn');
+            const text = textarea.value.trim();
+
+            if (text === '') return alert('אנא כיתבו שאלה.');
+            btn.disabled = true;
+            btn.innerText = "שולח...";
+
+            db.collection("court_questions").add({
+                text: text,
+                author: currentStudentName,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            }).then(() => {
+                textarea.value = '';
+                btn.disabled = false;
+                btn.innerText = "שלח ללוח הכיתתי";
+            }).catch((error) => {
+                console.error("Error writing document: ", error);
+                alert("אירעה שגיאה בשליחת השאלה.");
+                btn.disabled = false;
+                btn.innerText = "שלח ללוח הכיתתי";
+            });
+        }
+
+        function toggleTeacherMode() {
+            if(!isTeacherMode) {
+                const pass = prompt("הכנס סיסמת מורה:");
+                if(pass === "1234") {
+                    isTeacherMode = true;
+                    document.getElementById('questions-board').classList.add('teacher-active');
+                    alert("מצב מורה הופעל. כעת תוכל למחוק שאלות מהלוח.");
+                } else {
+                    if(pass !== null) alert("סיסמה שגויה.");
+                }
+            } else {
+                isTeacherMode = false;
+                document.getElementById('questions-board').classList.remove('teacher-active');
+                alert("מצב מורה כובה.");
+            }
+        }
+
+        function deleteQuestion(docId) {
+            if(confirm("למחוק שאלה זו מהלוח?")) {
+                db.collection("court_questions").doc(docId).delete();
+            }
+        }
+    </script>
+</body>
+</html>
