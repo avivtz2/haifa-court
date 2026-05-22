@@ -270,14 +270,27 @@
 
         // --- FIREBASE SETUP ---
         // TODO: החלף את האובייקט הזה באובייקט מהפרויקט שיצרת ב-Firebase!
-        const firebaseConfig = {
-            apiKey: "AIzaSyYourApiKeyHere...",
-            authDomain: "your-project.firebaseapp.com",
-            projectId: "your-project-id",
-            storageBucket: "your-project.appspot.com",
-            messagingSenderId: "123456789",
-            appId: "1:123456789:web:abcdefg"
-        };
+    // Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyA9SZmnIUtAcJq2IK2Ug7L-XKYJ_3-0_Bg",
+  authDomain: "haifa-court-sim.firebaseapp.com",
+  projectId: "haifa-court-sim",
+  storageBucket: "haifa-court-sim.firebasestorage.app",
+  messagingSenderId: "192566156523",
+  appId: "1:192566156523:web:a468af6b242d1985d072ae",
+  measurementId: "G-NYC41HXT8K"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
         
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
